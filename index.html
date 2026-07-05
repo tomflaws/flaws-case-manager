@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Flaws Case Manager</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',Calibri,Arial,sans-serif;background:#EEF2F7;color:#222;font-size:13px}
+
+/* ── Password screen ─────────────────────────── */
+#pw{display:flex;align-items:center;justify-content:center;min-height:100vh;background:#1F3864}
+.pw-card{background:#fff;border-radius:12px;padding:40px 32px;text-align:center;width:320px;box-shadow:0 8px 32px rgba(0,0,0,.3)}
+.pw-logo{font-size:44px;margin-bottom:12px}
+.pw-card h1{font-size:18px;color:#1F3864;margin-bottom:4px;font-weight:600}
+.pw-card p{font-size:12px;color:#888;margin-bottom:24px}
+.pw-card input{width:100%;padding:9px 12px;border:1.5px solid #ddd;border-radius:6px;font-size:14px;margin-bottom:6px;font-family:inherit}
+.pw-card input:focus{outline:none;border-color:#1F3864}
+.pw-card button{width:100%;padding:9px;background:#1F3864;color:#fff;border:none;border-radius:6px;font-size:14px;cursor:pointer;margin-top:10px;font-family:inherit}
+.pw-card button:hover{background:#162B4F}
+#pw-err{display:none;color:#c00;font-size:12px;margin-top:4px}
+
+/* ── Top bar ─────────────────────────────────── */
+#topbar{background:#1F3864;color:#fff;padding:10px 18px;position:sticky;top:0;z-index:100;display:flex;align-items:center;gap:12px;flex-wrap:wrap;box-shadow:0 2px 6px rgba(0,0,0,.25)}
+#top-l{flex:1;min-width:180px}
+#app-title{font-size:15px;font-weight:600}
+#app-sub{font-size:11px;opacity:.85;margin-top:2px}
+#app-sub b{color:#fff}
+#top-r{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+#srch{padding:6px 10px;border:none;border-radius:4px;font-size:13px;width:160px;font-family:inherit}
+#srch:focus{outline:2px solid #4472C4}
+.tbtn{padding:6px 13px;border-radius:4px;border:1.5px solid rgba(255,255,255,.45);background:transparent;color:#fff;font-size:12px;cursor:pointer;white-space:nowrap;font-family:inherit}
+.tbtn:hover{background:rgba(255,255,255,.15)}
+
+/* ── Add-case panel ──────────────────────────── */
+#add-panel{display:none;background:#fff;border-bottom:1.5px solid #ddd;padding:14px 18px;gap:10px;align-items:flex-end;flex-wrap:wrap}
+#add-panel label{font-size:10px;color:#666;display:block;margin-bottom:3px;font-weight:600;text-transform:uppercase;letter-spacing:.3px}
+#new-name{width:360px;max-width:100%;padding:7px 10px;border:1.5px solid #ddd;border-radius:4px;font-size:13px;font-family:inherit}
+#new-name:focus{outline:none;border-color:#1F3864}
+#new-cat{padding:7px 10px;border:1.5px solid #ddd;border-radius:4px;font-size:13px;cursor:pointer;font-family:inherit}
+#add-btn{padding:7px 18px;background:#1F3864;color:#fff;border:none;border-radius:4px;font-size:13px;cursor:pointer;font-family:inherit}
+#add-btn:hover:not(:disabled){background:#162B4F}
+#add-btn:disabled{opacity:.45;cursor:default}
+.add-hint{font-size:11px;color:#999;align-self:center}
+
+/* ── Case list ───────────────────────────────── */
+#case-list{padding:12px 16px 48px;display:flex;flex-direction:column;gap:14px}
+
+/* ── Section ─────────────────────────────────── */
+.sect{border-radius:6px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.1)}
+.sect-hd{padding:9px 14px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;color:#fff;user-select:none}
+.sect-hd:hover{filter:brightness(.94)}
+.sect-title{font-weight:600;font-size:14px}
+.badge{background:rgba(255,255,255,.25);border-radius:10px;padding:1px 9px;font-size:11px}
+.done-badge{background:rgba(255,255,255,.15)}
+.tbl-wrap{overflow-x:auto}
+
+/* ── Table rows ──────────────────────────────── */
+.row{display:grid;grid-template-columns:30px minmax(170px,1.4fr) minmax(130px,1fr) 112px;gap:8px;padding:5px 12px;align-items:center;border-bottom:.5px solid rgba(0,0,0,.07);min-width:500px}
+.hdr-row{padding:4px 12px;border-bottom:1px solid rgba(0,0,0,.12)!important}
+.hdr-row div{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.3px;color:#555}
+.c-chk{text-align:center}
+.c-name{font-size:12px;line-height:1.4;word-break:break-word;overflow-wrap:anywhere}
+.c-name.done{color:#aaa;text-decoration:line-through}
+.c-na input,.na-in{width:100%;padding:4px 7px;border:1px solid #ddd;border-radius:3px;font-size:12px;font-family:inherit;background:rgba(255,255,255,.75)}
+.na-in:focus{outline:2px solid rgba(31,56,100,.35);background:#fff}
+.c-cat select,.cat-sel{width:100%;padding:4px 6px;border:1px solid #ddd;border-radius:3px;font-size:12px;cursor:pointer;font-family:inherit}
+.empty{padding:12px 14px;font-size:12px;color:#999;font-style:italic;background:#fff}
+
+/* ── Toast ───────────────────────────────────── */
+#toast{display:none;position:fixed;bottom:20px;right:20px;background:#333;color:#fff;padding:10px 16px;border-radius:6px;font-size:12px;z-index:200;max-width:280px;box-shadow:0 4px 12px rgba(0,0,0,.25)}
+
+/* ── Footer ──────────────────────────────────── */
+#footer{text-align:center;font-size:10px;color:#aaa;padding:8px 16px;border-top:1px solid #ddd}
+
+@media(max-width:580px){
+  #srch{width:130px}
+  #new-name{width:100%}
+  #case-list{padding:8px 8px 40px}
+}
+</style>
+</head>
+<body>
+
+<!-- ── Password screen ─────────────────────────── -->
+<div id="pw">
+  <div class="pw-card">
+    <div class="pw-logo">⚖</div>
+    <h1>Flaws Case Manager</h1>
+    <p>Altman Nussbaum Shunnarah</p>
+    <input id="pw-in" type="password" placeholder="Password">
+    <div id="pw-err">Incorrect password — try again</div>
+    <button onclick="checkPw()">Sign In</button>
+  </div>
+</div>
+
+<!-- ── Main app ─────────────────────────────────── -->
+<div id="app" style="display:none">
+
+  <div id="topbar">
+    <div id="top-l">
+      <div id="app-title">Flaws Case Manager</div>
+      <div id="app-sub">Loading…</div>
+    </div>
+    <div id="top-r">
+      <input id="srch" type="text" placeholder="Search cases…" oninput="onSearch(this.value)">
+      <button class="tbtn" id="add-toggle" onclick="toggleAdd()">+ Add Case</button>
+    </div>
+  </div>
+
+  <div id="add-panel">
+    <div>
+      <label>Case name</label>
+      <input id="new-name" type="text" placeholder="e.g. John A Smith v. Acme Corp DOL 1/1/2024">
+    </div>
+    <div>
+      <label>Category</label>
+      <select id="new-cat">
+        <option>Pre-Suit</option>
+        <option>In Suit</option>
+        <option>Settled</option>
+      </select>
+    </div>
+    <button id="add-btn" onclick="doAdd()">Add Case</button>
+    <span class="add-hint">Last name is extracted automatically for sorting</span>
+  </div>
+
+  <div id="case-list"></div>
+  <div id="footer">Changes save automatically · Real-time sync enabled · Source: FLAWS Case Count (Less CLSD/Disbursed), 6/22/2026</div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ── Config ───────────────────────────────────────────────────
+// STEP 1: Replace the value below with your Supabase anon/public key.
+// Find it at: Supabase Dashboard → your project → Settings → API → "anon public"
+const SUPABASE_URL  = 'https://hamxiiioxuzgvuzfrqce.supabase.co';
+const SUPABASE_KEY  = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhhbXhpaWlveHV6Z3Z1emZycWNlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk2ODcwODQsImV4cCI6MjA5NTI2MzA4NH0.XEWwxM5H-7TpDiMX-FEhVOEonhd4exFHJ-eNCXzZsqU';
+const APP_PASSWORD  = 'ANSFlaws2024';
+
+const CATS     = ['Pre-Suit','In Suit','Settled'];
+const ALL_CATS = ['Pre-Suit','In Suit','Settled','Closed'];
+const CFG = {
+  'Pre-Suit':{ h:'#1F3864', b1:'#DCE6F1', b2:'#F0F5FB' },
+  'In Suit': { h:'#1C4B2D', b1:'#E2EFD9', b2:'#F1F8ED' },
+  'Settled': { h:'#4A4A4A', b1:'#EFEFEF', b2:'#F8F8F8' },
+  'Closed':  { h:'#7A1C1C', b1:'#FCE4D6', b2:'#FEF3EE' },
+};
+
+// ── State ────────────────────────────────────────────────────
+let sb, cases=[], collapsed={}, searchQ='', localNa={}, naTimers={}, rtPending=false;
+
+// ── Auth ─────────────────────────────────────────────────────
+function checkPw(){
+  const v=document.getElementById('pw-in').value;
+  if(v===APP_PASSWORD){
+    sessionStorage.setItem('cm_ok','1');
+    document.getElementById('pw').style.display='none';
+    startApp();
+  } else {
+    document.getElementById('pw-err').style.display='block';
+    document.getElementById('pw-in').value='';
+    document.getElementById('pw-in').focus();
+  }
+}
+
+// ── App start ────────────────────────────────────────────────
+async function startApp(){
+  sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+  document.getElementById('app').style.display='block';
+  await loadCases();
+  // Real-time: refresh when any user makes a change
+  sb.channel('cm_live')
+    .on('postgres_changes',{event:'*',schema:'public',table:'cases'},handleRT)
+    .subscribe();
+}
+
+// ── Real-time handler ────────────────────────────────────────
+function handleRT(){
+  // Don't interrupt someone mid-type
+  const active=document.activeElement;
+  if(active&&(active.classList.contains('na-in')||active.id==='new-name')){
+    rtPending=true;
+    toast('Another user made a change — list will refresh when you finish typing');
+    return;
+  }
+  loadCases();
+}
+function onInputBlur(){
+  if(rtPending){ rtPending=false; loadCases(); }
+}
+
+// ── Data ─────────────────────────────────────────────────────
+async function loadCases(){
+  const {data,error}=await sb.from('cases').select('*').order('last_name');
+  if(error){ toast('⚠ Could not load cases: '+error.message); return; }
+  cases=data||[];
+  render();
+}
+
+async function moveCase(id,category){
+  const {error}=await sb.from('cases').update({category}).eq('id',id);
+  if(error) toast('⚠ Save failed: '+error.message);
+}
+
+async function toggleDone(id,done){
+  const {error}=await sb.from('cases').update({done}).eq('id',id);
+  if(error) toast('⚠ Save failed: '+error.message);
+}
+
+function naInput(id,val){
+  localNa[id]=val;
+  clearTimeout(naTimers[id]);
+  naTimers[id]=setTimeout(async()=>{
+    const {error}=await sb.from('cases').update({next_action:val}).eq('id',id);
+    if(error) toast('⚠ Could not save next action');
+    else delete localNa[id];
+  },650);
+}
+
+function extractLast(name){
+  let s=name.replace(/^(HARVARD\s+MORGUE-?\s*|Estate\s+of\s+)/i,'');
+  const m=s.search(/,|\(|\bv\.\b|\bvs?\.?\b|\||\bDOL\b|\bMVA\b|\bUM\b|\d/i);
+  if(m>-1) s=s.slice(0,m);
+  const toks=s.trim().split(/\s+/).filter(Boolean);
+  if(!toks.length) return name.split(/\s+/).pop()||'';
+  const suf=new Set(['jr','sr','ii','iii','iv','esq']);
+  let last=toks[toks.length-1].replace(/[.,]+$/,'');
+  if(suf.has(last.toLowerCase())&&toks.length>1) last=toks[toks.length-2].replace(/[.,]+$/,'');
+  return last;
+}
+
+async function doAdd(){
+  const name=document.getElementById('new-name').value.trim();
+  const cat=document.getElementById('new-cat').value;
+  if(!name){ document.getElementById('new-name').focus(); return; }
+  const btn=document.getElementById('add-btn');
+  btn.disabled=true; btn.textContent='Adding…';
+  const last_name=extractLast(name);
+  const {error}=await sb.from('cases').insert({name,last_name,category:cat,done:false,next_action:''});
+  btn.disabled=false; btn.textContent='Add Case';
+  if(error){ toast('⚠ Could not add case: '+error.message); return; }
+  document.getElementById('new-name').value='';
+  document.getElementById('new-cat').value='Pre-Suit';
+  toggleAdd();
+}
+
+// ── UI helpers ───────────────────────────────────────────────
+function toggleAdd(){
+  const p=document.getElementById('add-panel');
+  const btn=document.getElementById('add-toggle');
+  const open=p.style.display==='flex';
+  p.style.display=open?'none':'flex';
+  btn.textContent=open?'+ Add Case':'✕ Cancel';
+  if(!open) document.getElementById('new-name').focus();
+}
+
+function onSearch(v){ searchQ=v.toLowerCase(); render(); }
+function togSec(cat){ collapsed[cat]=!collapsed[cat]; render(); }
+
+function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+function toast(msg){
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.style.display='block';
+  clearTimeout(toast._t);
+  toast._t=setTimeout(()=>t.style.display='none',3800);
+}
+
+// ── Render ───────────────────────────────────────────────────
+function render(){
+  const counts=Object.fromEntries(ALL_CATS.map(cat=>[cat,cases.filter(c=>c.category===cat).length]));
+  const done=cases.filter(c=>c.done).length;
+
+  document.getElementById('app-sub').innerHTML=
+    CATS.map(cat=>`${cat}: <b>${counts[cat]}</b>`).join('  ·  ')+
+    (counts.Closed?`  ·  ${counts.Closed} closed`:'')+
+    (done?`  ·  ${done} done`:'')+
+    `  ·  <b>${cases.length}</b> total`;
+
+  const sects=[...CATS,...(counts.Closed>0?['Closed']:[])];
+  document.getElementById('case-list').innerHTML=sects.map(cat=>{
+    const cfg=CFG[cat];
+    const coll=collapsed[cat];
+    const shown=cases
+      .filter(c=>c.category===cat&&(!searchQ||c.name.toLowerCase().includes(searchQ)))
+      .sort((a,b)=>(a.last_name||'').localeCompare(b.last_name||''));
+    const tot=counts[cat];
+    const doneCt=cases.filter(c=>c.category===cat&&c.done).length;
+
+    let h=`<div class="sect">
+<div class="sect-hd" style="background:${cfg.h}" onclick="togSec('${cat}')">
+  <span class="sect-title">${cat}</span>
+  <div style="display:flex;gap:10px;align-items:center;font-size:12px">
+    ${doneCt?`<span class="badge done-badge">${doneCt} done</span>`:''}
+    <span class="badge">${tot} cases${searchQ&&shown.length!==tot?` (${shown.length} shown)`:''}</span>
+    <span>${coll?'▶':'▼'}</span>
+  </div>
+</div>`;
+
+    if(!coll){
+      h+=`<div class="tbl-wrap">
+<div class="row hdr-row" style="background:${cfg.b1}">
+  <div class="c-chk">✓</div>
+  <div class="c-name">Case name</div>
+  <div class="c-na">Next action</div>
+  <div class="c-cat">Category</div>
+</div>`;
+      if(!shown.length){
+        h+=`<div class="empty">${searchQ?'No matching cases in this category':'No cases in this category'}</div>`;
+      } else {
+        shown.forEach((c,i)=>{
+          const bg=i%2===0?cfg.b2:cfg.b1;
+          const naVal=localNa[c.id]!==undefined?localNa[c.id]:(c.next_action||'');
+          h+=`<div class="row" style="background:${bg}">
+  <div class="c-chk"><input type="checkbox" ${c.done?'checked':''} onchange="toggleDone('${c.id}',this.checked)" style="width:15px;height:15px;cursor:pointer;accent-color:${cfg.h}"></div>
+  <div class="c-name${c.done?' done':''}">${esc(c.name)}</div>
+  <div class="c-na"><input class="na-in" type="text" value="${esc(naVal)}" oninput="naInput('${c.id}',this.value)" onblur="onInputBlur()" placeholder="Next action…"></div>
+  <div class="c-cat"><select class="cat-sel" onchange="moveCase('${c.id}',this.value)">
+    ${ALL_CATS.map(o=>`<option value="${o}"${o===c.category?' selected':''}>${o}</option>`).join('')}
+  </select></div>
+</div>`;
+        });
+      }
+      h+=`</div>`;
+    }
+    h+=`</div>`;
+    return h;
+  }).join('');
+}
+
+// ── Init ─────────────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded',()=>{
+  if(sessionStorage.getItem('cm_ok')==='1'){
+    document.getElementById('pw').style.display='none';
+    startApp();
+  } else {
+    document.getElementById('pw-in').focus();
+  }
+  document.getElementById('pw-in').addEventListener('keydown',e=>{ if(e.key==='Enter') checkPw(); });
+  document.getElementById('new-name').addEventListener('keydown',e=>{ if(e.key==='Enter') doAdd(); });
+});
+</script>
+</body>
+</html>
