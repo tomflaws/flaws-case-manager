@@ -9,7 +9,6 @@
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Segoe UI',Calibri,Arial,sans-serif;background:#EEF2F7;color:#222;font-size:13px}
 
-/* ── Password screen ─────────────────────────── */
 #pw{display:flex;align-items:center;justify-content:center;min-height:100vh;background:#1F3864}
 .pw-card{background:#fff;border-radius:12px;padding:40px 32px;text-align:center;width:320px;box-shadow:0 8px 32px rgba(0,0,0,.3)}
 .pw-logo{font-size:44px;margin-bottom:12px}
@@ -21,7 +20,6 @@ body{font-family:'Segoe UI',Calibri,Arial,sans-serif;background:#EEF2F7;color:#2
 .pw-card button:hover{background:#162B4F}
 #pw-err{display:none;color:#c00;font-size:12px;margin-top:4px}
 
-/* ── Top bar ─────────────────────────────────── */
 #topbar{background:#1F3864;color:#fff;padding:10px 18px;position:sticky;top:0;z-index:100;display:flex;align-items:center;gap:12px;flex-wrap:wrap;box-shadow:0 2px 6px rgba(0,0,0,.25)}
 #top-l{flex:1;min-width:180px}
 #app-title{font-size:15px;font-weight:600}
@@ -33,7 +31,6 @@ body{font-family:'Segoe UI',Calibri,Arial,sans-serif;background:#EEF2F7;color:#2
 .tbtn{padding:6px 13px;border-radius:4px;border:1.5px solid rgba(255,255,255,.45);background:transparent;color:#fff;font-size:12px;cursor:pointer;white-space:nowrap;font-family:inherit}
 .tbtn:hover{background:rgba(255,255,255,.15)}
 
-/* ── Add-case panel ──────────────────────────── */
 #add-panel{display:none;background:#fff;border-bottom:1.5px solid #ddd;padding:14px 18px;gap:10px;align-items:flex-end;flex-wrap:wrap}
 #add-panel label{font-size:10px;color:#666;display:block;margin-bottom:3px;font-weight:600;text-transform:uppercase;letter-spacing:.3px}
 #new-name{width:360px;max-width:100%;padding:7px 10px;border:1.5px solid #ddd;border-radius:4px;font-size:13px;font-family:inherit}
@@ -44,46 +41,50 @@ body{font-family:'Segoe UI',Calibri,Arial,sans-serif;background:#EEF2F7;color:#2
 #add-btn:disabled{opacity:.45;cursor:default}
 .add-hint{font-size:11px;color:#999;align-self:center}
 
-/* ── Case list ───────────────────────────────── */
 #case-list{padding:12px 16px 48px;display:flex;flex-direction:column;gap:14px}
 
-/* ── Section ─────────────────────────────────── */
 .sect{border-radius:6px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.1)}
 .sect-hd{padding:9px 14px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;color:#fff;user-select:none}
 .sect-hd:hover{filter:brightness(.94)}
 .sect-title{font-weight:600;font-size:14px}
 .badge{background:rgba(255,255,255,.25);border-radius:10px;padding:1px 9px;font-size:11px}
-.done-badge{background:rgba(255,255,255,.15)}
 .tbl-wrap{overflow-x:auto}
 
-/* ── Table rows ──────────────────────────────── */
-.row{display:grid;grid-template-columns:30px minmax(170px,1.4fr) minmax(130px,1fr) 112px;gap:8px;padding:5px 12px;align-items:center;border-bottom:.5px solid rgba(0,0,0,.07);min-width:500px}
+/* Case row grid: name | next-action | done-btn | category */
+.row{display:grid;grid-template-columns:minmax(190px,1.5fr) minmax(130px,1fr) 32px 112px;gap:8px;padding:5px 12px;align-items:center;border-bottom:.5px solid rgba(0,0,0,.07);min-width:500px}
 .hdr-row{padding:4px 12px;border-bottom:1px solid rgba(0,0,0,.12)!important}
 .hdr-row div{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.3px;color:#555}
-.c-chk{text-align:center}
 .c-name{font-size:12px;line-height:1.4;word-break:break-word;overflow-wrap:anywhere}
-.c-name.done{color:#aaa;text-decoration:line-through}
 .c-na input,.na-in{width:100%;padding:4px 7px;border:1px solid #ddd;border-radius:3px;font-size:12px;font-family:inherit;background:rgba(255,255,255,.75)}
 .na-in:focus{outline:2px solid rgba(31,56,100,.35);background:#fff}
 .c-cat select,.cat-sel{width:100%;padding:4px 6px;border:1px solid #ddd;border-radius:3px;font-size:12px;cursor:pointer;font-family:inherit}
-.empty{padding:12px 14px;font-size:12px;color:#999;font-style:italic;background:#fff}
 
-/* ── Toast ───────────────────────────────────── */
-#toast{display:none;position:fixed;bottom:20px;right:20px;background:#333;color:#fff;padding:10px 16px;border-radius:6px;font-size:12px;z-index:200;max-width:280px;box-shadow:0 4px 12px rgba(0,0,0,.25)}
+/* ✓ Done button */
+.done-btn{width:28px;height:28px;border-radius:50%;border:1.5px solid #ccc;background:transparent;color:#999;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;font-family:inherit}
+.done-btn:hover:not(:disabled){border-color:#1C4B2D;color:#1C4B2D;background:#E2EFD9}
+.done-btn:disabled{opacity:.28;cursor:default}
 
-/* ── Footer ──────────────────────────────────── */
+/* Completed tasks bar */
+.ct-bar{min-width:500px;padding:4px 12px 4px 14px;border-bottom:.5px solid rgba(0,0,0,.07);background:inherit}
+.ct-toggle{background:none;border:none;cursor:pointer;font-size:11px;color:#555;padding:2px 6px;border-radius:3px;font-family:inherit}
+.ct-toggle:hover{background:rgba(0,0,0,.06)}
+.ct-list{margin-top:4px;padding:4px 0 4px 8px;display:flex;flex-direction:column;gap:3px}
+.ct-item{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:11px;color:#555;padding:2px 4px}
+.ct-item span{flex:1;word-break:break-word}
+.ct-item em{color:#999;font-size:10px}
+.ct-del{background:none;border:none;cursor:pointer;color:#bbb;font-size:11px;padding:1px 4px;border-radius:2px;font-family:inherit;flex-shrink:0}
+.ct-del:hover{color:#c00;background:rgba(200,0,0,.08)}
+
+.empty{padding:12px 14px;font-size:12px;color:#999;font-style:italic;background:#fff;min-width:500px}
+
+#toast{display:none;position:fixed;bottom:20px;right:20px;background:#333;color:#fff;padding:10px 16px;border-radius:6px;font-size:12px;z-index:200;max-width:300px;box-shadow:0 4px 12px rgba(0,0,0,.25)}
 #footer{text-align:center;font-size:10px;color:#aaa;padding:8px 16px;border-top:1px solid #ddd}
 
-@media(max-width:580px){
-  #srch{width:130px}
-  #new-name{width:100%}
-  #case-list{padding:8px 8px 40px}
-}
+@media(max-width:580px){#srch{width:130px}#new-name{width:100%}#case-list{padding:8px 8px 40px}}
 </style>
 </head>
 <body>
 
-<!-- ── Password screen ─────────────────────────── -->
 <div id="pw">
   <div class="pw-card">
     <div class="pw-logo">⚖</div>
@@ -95,9 +96,7 @@ body{font-family:'Segoe UI',Calibri,Arial,sans-serif;background:#EEF2F7;color:#2
   </div>
 </div>
 
-<!-- ── Main app ─────────────────────────────────── -->
 <div id="app" style="display:none">
-
   <div id="topbar">
     <div id="top-l">
       <div id="app-title">Flaws Case Manager</div>
@@ -123,22 +122,19 @@ body{font-family:'Segoe UI',Calibri,Arial,sans-serif;background:#EEF2F7;color:#2
       </select>
     </div>
     <button id="add-btn" onclick="doAdd()">Add Case</button>
-    <span class="add-hint">Last name is extracted automatically for sorting</span>
+    <span class="add-hint">Last name extracted automatically for sorting</span>
   </div>
 
   <div id="case-list"></div>
-  <div id="footer">Changes save automatically · Real-time sync enabled · Source: FLAWS Case Count (Less CLSD/Disbursed), 6/22/2026</div>
+  <div id="footer">Changes save automatically · Real-time sync enabled · Source: FLAWS Case Count 6/22/2026</div>
 </div>
 
 <div id="toast"></div>
 
 <script>
-// ── Config ───────────────────────────────────────────────────
-// STEP 1: Replace the value below with your Supabase anon/public key.
-// Find it at: Supabase Dashboard → your project → Settings → API → "anon public"
-const SUPABASE_URL  = 'https://hamxiiioxuzgvuzfrqce.supabase.co';
-const SUPABASE_KEY  = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhhbXhpaWlveHV6Z3Z1emZycWNlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk2ODcwODQsImV4cCI6MjA5NTI2MzA4NH0.XEWwxM5H-7TpDiMX-FEhVOEonhd4exFHJ-eNCXzZsqU';
-const APP_PASSWORD  = 'ANSFlaws2024';
+const SUPABASE_URL = 'https://hamxiiioxuzgvuzfrqce.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhhbXhpaWlveHV6Z3Z1emZycWNlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk2ODcwODQsImV4cCI6MjA5NTI2MzA4NH0.XEWwxM5H-7TpDiMX-FEhVOEonhd4exFHJ-eNCXzZsqU';
+const APP_PASSWORD = 'ANSFlaws2024';
 
 const CATS     = ['Pre-Suit','In Suit','Settled'];
 const ALL_CATS = ['Pre-Suit','In Suit','Settled','Closed'];
@@ -149,10 +145,8 @@ const CFG = {
   'Closed':  { h:'#7A1C1C', b1:'#FCE4D6', b2:'#FEF3EE' },
 };
 
-// ── State ────────────────────────────────────────────────────
-let sb, cases=[], collapsed={}, searchQ='', localNa={}, naTimers={}, rtPending=false;
+let sb, cases=[], collapsed={}, searchQ='', localNa={}, naTimers={}, rtPending=false, openCompleted={};
 
-// ── Auth ─────────────────────────────────────────────────────
 function checkPw(){
   const v=document.getElementById('pw-in').value;
   if(v===APP_PASSWORD){
@@ -166,20 +160,16 @@ function checkPw(){
   }
 }
 
-// ── App start ────────────────────────────────────────────────
 async function startApp(){
   sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
   document.getElementById('app').style.display='block';
   await loadCases();
-  // Real-time: refresh when any user makes a change
   sb.channel('cm_live')
     .on('postgres_changes',{event:'*',schema:'public',table:'cases'},handleRT)
     .subscribe();
 }
 
-// ── Real-time handler ────────────────────────────────────────
 function handleRT(){
-  // Don't interrupt someone mid-type
   const active=document.activeElement;
   if(active&&(active.classList.contains('na-in')||active.id==='new-name')){
     rtPending=true;
@@ -188,11 +178,8 @@ function handleRT(){
   }
   loadCases();
 }
-function onInputBlur(){
-  if(rtPending){ rtPending=false; loadCases(); }
-}
+function onInputBlur(){ if(rtPending){ rtPending=false; loadCases(); } }
 
-// ── Data ─────────────────────────────────────────────────────
 async function loadCases(){
   const {data,error}=await sb.from('cases').select('*').order('last_name');
   if(error){ toast('⚠ Could not load cases: '+error.message); return; }
@@ -205,11 +192,6 @@ async function moveCase(id,category){
   if(error) toast('⚠ Save failed: '+error.message);
 }
 
-async function toggleDone(id,done){
-  const {error}=await sb.from('cases').update({done}).eq('id',id);
-  if(error) toast('⚠ Save failed: '+error.message);
-}
-
 function naInput(id,val){
   localNa[id]=val;
   clearTimeout(naTimers[id]);
@@ -219,6 +201,38 @@ function naInput(id,val){
     else delete localNa[id];
   },650);
 }
+
+async function markDone(id){
+  const c=cases.find(x=>x.id===id);
+  if(!c) return;
+  const task=(localNa[id]!==undefined?localNa[id]:(c.next_action||'')).trim();
+  if(!task) return;
+  // Cancel pending debounce
+  if(naTimers[id]){ clearTimeout(naTimers[id]); delete naTimers[id]; }
+  delete localNa[id];
+  let existing=[];
+  try{ existing=JSON.parse(c.completed_tasks||'[]'); }catch(e){}
+  const updated=[...existing,{task,completed_at:new Date().toISOString()}];
+  const {error}=await sb.from('cases').update({
+    next_action:'',
+    completed_tasks:JSON.stringify(updated)
+  }).eq('id',id);
+  if(error) toast('⚠ Could not mark done: '+error.message);
+}
+
+async function deleteCompleted(id,idx){
+  const c=cases.find(x=>x.id===id);
+  if(!c) return;
+  let existing=[];
+  try{ existing=JSON.parse(c.completed_tasks||'[]'); }catch(e){}
+  existing.splice(idx,1);
+  const {error}=await sb.from('cases').update({
+    completed_tasks:JSON.stringify(existing)
+  }).eq('id',id);
+  if(error) toast('⚠ Could not delete task: '+error.message);
+}
+
+function toggleCompleted(id){ openCompleted[id]=!openCompleted[id]; render(); }
 
 function extractLast(name){
   let s=name.replace(/^(HARVARD\s+MORGUE-?\s*|Estate\s+of\s+)/i,'');
@@ -239,7 +253,9 @@ async function doAdd(){
   const btn=document.getElementById('add-btn');
   btn.disabled=true; btn.textContent='Adding…';
   const last_name=extractLast(name);
-  const {error}=await sb.from('cases').insert({name,last_name,category:cat,done:false,next_action:''});
+  const {error}=await sb.from('cases').insert({
+    name,last_name,category:cat,done:false,next_action:'',completed_tasks:'[]'
+  });
   btn.disabled=false; btn.textContent='Add Case';
   if(error){ toast('⚠ Could not add case: '+error.message); return; }
   document.getElementById('new-name').value='';
@@ -247,7 +263,6 @@ async function doAdd(){
   toggleAdd();
 }
 
-// ── UI helpers ───────────────────────────────────────────────
 function toggleAdd(){
   const p=document.getElementById('add-panel');
   const btn=document.getElementById('add-toggle');
@@ -256,12 +271,9 @@ function toggleAdd(){
   btn.textContent=open?'+ Add Case':'✕ Cancel';
   if(!open) document.getElementById('new-name').focus();
 }
-
 function onSearch(v){ searchQ=v.toLowerCase(); render(); }
 function togSec(cat){ collapsed[cat]=!collapsed[cat]; render(); }
-
 function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
-
 function toast(msg){
   const t=document.getElementById('toast');
   t.textContent=msg; t.style.display='block';
@@ -269,15 +281,11 @@ function toast(msg){
   toast._t=setTimeout(()=>t.style.display='none',3800);
 }
 
-// ── Render ───────────────────────────────────────────────────
 function render(){
   const counts=Object.fromEntries(ALL_CATS.map(cat=>[cat,cases.filter(c=>c.category===cat).length]));
-  const done=cases.filter(c=>c.done).length;
-
   document.getElementById('app-sub').innerHTML=
     CATS.map(cat=>`${cat}: <b>${counts[cat]}</b>`).join('  ·  ')+
     (counts.Closed?`  ·  ${counts.Closed} closed`:'')+
-    (done?`  ·  ${done} done`:'')+
     `  ·  <b>${cases.length}</b> total`;
 
   const sects=[...CATS,...(counts.Closed>0?['Closed']:[])];
@@ -288,13 +296,11 @@ function render(){
       .filter(c=>c.category===cat&&(!searchQ||c.name.toLowerCase().includes(searchQ)))
       .sort((a,b)=>(a.last_name||'').localeCompare(b.last_name||''));
     const tot=counts[cat];
-    const doneCt=cases.filter(c=>c.category===cat&&c.done).length;
 
     let h=`<div class="sect">
 <div class="sect-hd" style="background:${cfg.h}" onclick="togSec('${cat}')">
   <span class="sect-title">${cat}</span>
   <div style="display:flex;gap:10px;align-items:center;font-size:12px">
-    ${doneCt?`<span class="badge done-badge">${doneCt} done</span>`:''}
     <span class="badge">${tot} cases${searchQ&&shown.length!==tot?` (${shown.length} shown)`:''}</span>
     <span>${coll?'▶':'▼'}</span>
   </div>
@@ -303,25 +309,56 @@ function render(){
     if(!coll){
       h+=`<div class="tbl-wrap">
 <div class="row hdr-row" style="background:${cfg.b1}">
-  <div class="c-chk">✓</div>
   <div class="c-name">Case name</div>
   <div class="c-na">Next action</div>
+  <div style="text-align:center;font-size:10px">✓</div>
   <div class="c-cat">Category</div>
 </div>`;
+
       if(!shown.length){
         h+=`<div class="empty">${searchQ?'No matching cases in this category':'No cases in this category'}</div>`;
       } else {
         shown.forEach((c,i)=>{
           const bg=i%2===0?cfg.b2:cfg.b1;
           const naVal=localNa[c.id]!==undefined?localNa[c.id]:(c.next_action||'');
+          let completedTasks=[];
+          try{ completedTasks=JSON.parse(c.completed_tasks||'[]'); }catch(e){}
+          const hasCompleted=completedTasks.length>0;
+          const isOpen=openCompleted[c.id];
+
+          // Main row
           h+=`<div class="row" style="background:${bg}">
-  <div class="c-chk"><input type="checkbox" ${c.done?'checked':''} onchange="toggleDone('${c.id}',this.checked)" style="width:15px;height:15px;cursor:pointer;accent-color:${cfg.h}"></div>
-  <div class="c-name${c.done?' done':''}">${esc(c.name)}</div>
+  <div class="c-name">${esc(c.name)}</div>
   <div class="c-na"><input class="na-in" type="text" value="${esc(naVal)}" oninput="naInput('${c.id}',this.value)" onblur="onInputBlur()" placeholder="Next action…"></div>
+  <div style="text-align:center">
+    <button class="done-btn" onclick="markDone('${c.id}')" title="Mark task as done" ${!naVal.trim()?'disabled':''}>✓</button>
+  </div>
   <div class="c-cat"><select class="cat-sel" onchange="moveCase('${c.id}',this.value)">
     ${ALL_CATS.map(o=>`<option value="${o}"${o===c.category?' selected':''}>${o}</option>`).join('')}
   </select></div>
 </div>`;
+
+          // Completed tasks bar
+          if(hasCompleted){
+            h+=`<div class="ct-bar" style="background:${bg}">
+  <button class="ct-toggle" onclick="toggleCompleted('${c.id}')">
+    ✓ ${completedTasks.length} completed task${completedTasks.length>1?'s':''} ${isOpen?'▲':'▼'}
+  </button>`;
+            if(isOpen){
+              h+=`<div class="ct-list">`;
+              completedTasks.forEach((t,idx)=>{
+                const txt=typeof t==='object'?t.task:t;
+                const dt=typeof t==='object'&&t.completed_at
+                  ?new Date(t.completed_at).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}):'';
+                h+=`<div class="ct-item">
+  <span>✓ ${esc(txt)}${dt?` <em>— ${dt}</em>`:''}</span>
+  <button class="ct-del" onclick="deleteCompleted('${c.id}',${idx})" title="Remove from log">✕</button>
+</div>`;
+              });
+              h+=`</div>`;
+            }
+            h+=`</div>`;
+          }
         });
       }
       h+=`</div>`;
@@ -331,7 +368,6 @@ function render(){
   }).join('');
 }
 
-// ── Init ─────────────────────────────────────────────────────
 window.addEventListener('DOMContentLoaded',()=>{
   if(sessionStorage.getItem('cm_ok')==='1'){
     document.getElementById('pw').style.display='none';
