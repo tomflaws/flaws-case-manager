@@ -319,60 +319,8 @@ function render(){
     (counts.Closed?`  ·  ${counts.Closed} closed`:'')+
     `  ·  <b>${cases.length}</b> cases`;
 
-  // ── Non-case tasks section ──────────────────────────────────
-  const active=tasks.filter(t=>!t.done);
-  const done=tasks.filter(t=>t.done);
-  const tcoll=collapsed['__tasks'];
-  let html=`<div class="sect">
-<div class="sect-hd" style="background:${TASK_CFG.h}" onclick="togSec('__tasks')">
-  <span class="sect-title">Non-Case To Do</span>
-  <div style="display:flex;gap:10px;align-items:center;font-size:12px">
-    ${active.length?`<span class="badge">${active.length} pending</span>`:''}
-    ${done.length?`<span class="badge" style="opacity:.65">${done.length} done</span>`:''}
-    <span>${tcoll?'▶':'▼'}</span>
-  </div>
-</div>`;
-
-  if(!tcoll){
-    // Add task input
-    html+=`<div class="task-add-row">
-  <input id="new-task" type="text" placeholder="Add a task…">
-  <button class="task-add-btn" onclick="addTask()">+ Add</button>
-</div>`;
-
-    if(!active.length&&!done.length){
-      html+=`<div class="empty">No tasks yet — type one above and press Add</div>`;
-    }
-
-    // Active tasks
-    active.forEach((t,i)=>{
-      const bg=i%2===0?TASK_CFG.b2:TASK_CFG.b1;
-      html+=`<div class="task-row" style="background:${bg}">
-  <div style="text-align:center"><input type="checkbox" onchange="toggleTask('${t.id}',this.checked)" style="width:14px;height:14px;cursor:pointer;accent-color:${TASK_CFG.h}"></div>
-  <div style="font-size:12px;line-height:1.4;word-break:break-word">${esc(t.task)}</div>
-  <button class="task-del" onclick="deleteTask('${t.id}')" title="Remove task">✕</button>
-</div>`;
-    });
-
-    // Completed tasks toggle + list
-    if(done.length){
-      html+=`<button class="done-tasks-toggle" onclick="showDoneTasks=!showDoneTasks;render()">
-  ${showDoneTasks?'▲ Hide':'▼ Show'} ${done.length} completed task${done.length>1?'s':''}
-</button>`;
-      if(showDoneTasks){
-        done.forEach((t,i)=>{
-          html+=`<div class="task-row" style="background:#f8f8f8">
-  <div style="text-align:center"><input type="checkbox" checked onchange="toggleTask('${t.id}',this.checked)" style="width:14px;height:14px;cursor:pointer;accent-color:${TASK_CFG.h}"></div>
-  <div style="font-size:12px;color:#aaa;text-decoration:line-through;line-height:1.4;word-break:break-word">${esc(t.task)}</div>
-  <button class="task-del" onclick="deleteTask('${t.id}')" title="Remove task">✕</button>
-</div>`;
-        });
-      }
-    }
-  }
-  html+=`</div>`;
-
   // ── Case sections ────────────────────────────────────────────
+  let html=``;
   const sects=[...CATS,...(counts.Closed>0?['Closed']:[])];
   sects.forEach(cat=>{
     const cfg=CFG[cat];
@@ -445,6 +393,52 @@ function render(){
     }
     html+=`</div>`;
   });
+
+  // ── Non-case tasks section (bottom) ─────────────────────────
+  const active=tasks.filter(t=>!t.done);
+  const done=tasks.filter(t=>t.done);
+  const tcoll=collapsed['__tasks'];
+  html+=`<div class="sect">
+<div class="sect-hd" style="background:${TASK_CFG.h}" onclick="togSec('__tasks')">
+  <span class="sect-title">Non-Case To Do</span>
+  <div style="display:flex;gap:10px;align-items:center;font-size:12px">
+    ${active.length?`<span class="badge">${active.length} pending</span>`:''}
+    ${done.length?`<span class="badge" style="opacity:.65">${done.length} done</span>`:''}
+    <span>${tcoll?'▶':'▼'}</span>
+  </div>
+</div>`;
+  if(!tcoll){
+    html+=`<div class="task-add-row">
+  <input id="new-task" type="text" placeholder="Add a task…">
+  <button class="task-add-btn" onclick="addTask()">+ Add</button>
+</div>`;
+    if(!active.length&&!done.length){
+      html+=`<div class="empty">No tasks yet — type one above and press Add</div>`;
+    }
+    active.forEach((t,i)=>{
+      const bg=i%2===0?TASK_CFG.b2:TASK_CFG.b1;
+      html+=`<div class="task-row" style="background:${bg}">
+  <div style="text-align:center"><input type="checkbox" onchange="toggleTask('${t.id}',this.checked)" style="width:14px;height:14px;cursor:pointer;accent-color:${TASK_CFG.h}"></div>
+  <div style="font-size:12px;line-height:1.4;word-break:break-word">${esc(t.task)}</div>
+  <button class="task-del" onclick="deleteTask('${t.id}')" title="Remove task">✕</button>
+</div>`;
+    });
+    if(done.length){
+      html+=`<button class="done-tasks-toggle" onclick="showDoneTasks=!showDoneTasks;render()">
+  ${showDoneTasks?'▲ Hide':'▼ Show'} ${done.length} completed task${done.length>1?'s':''}
+</button>`;
+      if(showDoneTasks){
+        done.forEach((t)=>{
+          html+=`<div class="task-row" style="background:#f8f8f8">
+  <div style="text-align:center"><input type="checkbox" checked onchange="toggleTask('${t.id}',this.checked)" style="width:14px;height:14px;cursor:pointer;accent-color:${TASK_CFG.h}"></div>
+  <div style="font-size:12px;color:#aaa;text-decoration:line-through;line-height:1.4;word-break:break-word">${esc(t.task)}</div>
+  <button class="task-del" onclick="deleteTask('${t.id}')" title="Remove task">✕</button>
+</div>`;
+        });
+      }
+    }
+  }
+  html+=`</div>`;
 
   document.getElementById('case-list').innerHTML=html;
 
