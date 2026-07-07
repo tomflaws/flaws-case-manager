@@ -55,25 +55,35 @@ body{font-family:'Segoe UI',Calibri,Arial,sans-serif;background:#EEF2F7;color:#2
 .hdr-row{padding:4px 12px;border-bottom:1px solid rgba(0,0,0,.12)!important}
 .hdr-row div{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.3px;color:#555}
 .c-name{font-size:12px;line-height:1.4;word-break:break-word;overflow-wrap:anywhere}
-.c-na input,.na-in{width:100%;padding:4px 7px;border:1px solid #ddd;border-radius:3px;font-size:12px;font-family:inherit;background:rgba(255,255,255,.75)}
+.na-in{width:100%;padding:4px 7px;border:1px solid #ddd;border-radius:3px;font-size:12px;font-family:inherit;background:rgba(255,255,255,.75)}
 .na-in:focus{outline:2px solid rgba(31,56,100,.35);background:#fff}
-.c-cat select,.cat-sel{width:100%;padding:4px 6px;border:1px solid #ddd;border-radius:3px;font-size:12px;cursor:pointer;font-family:inherit}
-
-/* ✓ Done button */
+.cat-sel{width:100%;padding:4px 6px;border:1px solid #ddd;border-radius:3px;font-size:12px;cursor:pointer;font-family:inherit}
 .done-btn{width:28px;height:28px;border-radius:50%;border:1.5px solid #ccc;background:transparent;color:#999;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;font-family:inherit}
 .done-btn:hover:not(:disabled){border-color:#1C4B2D;color:#1C4B2D;background:#E2EFD9}
 .done-btn:disabled{opacity:.28;cursor:default}
 
 /* Completed tasks bar */
-.ct-bar{min-width:500px;padding:4px 12px 4px 14px;border-bottom:.5px solid rgba(0,0,0,.07);background:inherit}
+.ct-bar{min-width:500px;padding:4px 12px 4px 14px;border-bottom:.5px solid rgba(0,0,0,.07)}
 .ct-toggle{background:none;border:none;cursor:pointer;font-size:11px;color:#555;padding:2px 6px;border-radius:3px;font-family:inherit}
 .ct-toggle:hover{background:rgba(0,0,0,.06)}
 .ct-list{margin-top:4px;padding:4px 0 4px 8px;display:flex;flex-direction:column;gap:3px}
-.ct-item{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:11px;color:#555;padding:2px 4px}
+.ct-item{display:flex;align-items:center;gap:8px;font-size:11px;color:#555;padding:2px 4px}
 .ct-item span{flex:1;word-break:break-word}
 .ct-item em{color:#999;font-size:10px}
 .ct-del{background:none;border:none;cursor:pointer;color:#bbb;font-size:11px;padding:1px 4px;border-radius:2px;font-family:inherit;flex-shrink:0}
 .ct-del:hover{color:#c00;background:rgba(200,0,0,.08)}
+
+/* Non-case task rows */
+.task-row{display:grid;grid-template-columns:24px 1fr 24px;gap:8px;padding:6px 12px;align-items:center;border-bottom:.5px solid rgba(0,0,0,.07);min-width:500px}
+.task-del{background:none;border:none;cursor:pointer;color:#ccc;font-size:13px;padding:2px 4px;border-radius:2px;font-family:inherit;text-align:center}
+.task-del:hover{color:#c00;background:rgba(200,0,0,.08)}
+.task-add-row{display:flex;gap:8px;padding:8px 12px;background:#fff;border-bottom:.5px solid rgba(0,0,0,.1);min-width:500px;align-items:center}
+#new-task{flex:1;padding:6px 9px;border:1.5px solid #ddd;border-radius:4px;font-size:13px;font-family:inherit}
+#new-task:focus{outline:none;border-color:#4A235A}
+.task-add-btn{padding:6px 14px;background:#4A235A;color:#fff;border:none;border-radius:4px;font-size:12px;cursor:pointer;font-family:inherit;white-space:nowrap}
+.task-add-btn:hover{background:#3A1A48}
+.done-tasks-toggle{background:none;border:none;cursor:pointer;font-size:11px;color:#888;font-family:inherit;padding:5px 12px;display:block;text-align:left;min-width:500px;border-bottom:.5px solid rgba(0,0,0,.07)}
+.done-tasks-toggle:hover{color:#4A235A}
 
 .empty{padding:12px 14px;font-size:12px;color:#999;font-style:italic;background:#fff;min-width:500px}
 
@@ -144,9 +154,11 @@ const CFG = {
   'Settled': { h:'#4A4A4A', b1:'#EFEFEF', b2:'#F8F8F8' },
   'Closed':  { h:'#7A1C1C', b1:'#FCE4D6', b2:'#FEF3EE' },
 };
+const TASK_CFG = { h:'#4A235A', b1:'#EDE0F8', b2:'#F5EFFC' };
 
-let sb, cases=[], collapsed={}, searchQ='', localNa={}, naTimers={}, rtPending=false, openCompleted={};
+let sb, cases=[], tasks=[], collapsed={}, searchQ='', localNa={}, naTimers={}, rtPending=false, openCompleted={}, showDoneTasks=false;
 
+// ── Auth ─────────────────────────────────────────────────────
 function checkPw(){
   const v=document.getElementById('pw-in').value;
   if(v===APP_PASSWORD){
@@ -160,38 +172,44 @@ function checkPw(){
   }
 }
 
+// ── App start ────────────────────────────────────────────────
 async function startApp(){
   sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
   document.getElementById('app').style.display='block';
-  await loadCases();
+  await Promise.all([loadCases(), loadTasks()]);
   sb.channel('cm_live')
     .on('postgres_changes',{event:'*',schema:'public',table:'cases'},handleRT)
+    .on('postgres_changes',{event:'*',schema:'public',table:'tasks'},handleTaskRT)
     .subscribe();
 }
 
+// ── Real-time ─────────────────────────────────────────────────
 function handleRT(){
-  const active=document.activeElement;
-  if(active&&(active.classList.contains('na-in')||active.id==='new-name')){
+  const a=document.activeElement;
+  if(a&&(a.classList.contains('na-in')||a.id==='new-name')){
     rtPending=true;
     toast('Another user made a change — list will refresh when you finish typing');
     return;
   }
   loadCases();
 }
+function handleTaskRT(){
+  const a=document.activeElement;
+  if(a&&a.id==='new-task'){ setTimeout(()=>loadTasks().then(render),800); return; }
+  loadTasks().then(render);
+}
 function onInputBlur(){ if(rtPending){ rtPending=false; loadCases(); } }
 
+// ── Case data ─────────────────────────────────────────────────
 async function loadCases(){
   const {data,error}=await sb.from('cases').select('*').order('last_name');
   if(error){ toast('⚠ Could not load cases: '+error.message); return; }
-  cases=data||[];
-  render();
+  cases=data||[]; render();
 }
-
 async function moveCase(id,category){
   const {error}=await sb.from('cases').update({category}).eq('id',id);
   if(error) toast('⚠ Save failed: '+error.message);
 }
-
 function naInput(id,val){
   localNa[id]=val;
   clearTimeout(naTimers[id]);
@@ -201,39 +219,56 @@ function naInput(id,val){
     else delete localNa[id];
   },650);
 }
-
 async function markDone(id){
   const c=cases.find(x=>x.id===id);
   if(!c) return;
   const task=(localNa[id]!==undefined?localNa[id]:(c.next_action||'')).trim();
   if(!task) return;
-  // Cancel pending debounce
   if(naTimers[id]){ clearTimeout(naTimers[id]); delete naTimers[id]; }
   delete localNa[id];
   let existing=[];
   try{ existing=JSON.parse(c.completed_tasks||'[]'); }catch(e){}
   const updated=[...existing,{task,completed_at:new Date().toISOString()}];
-  const {error}=await sb.from('cases').update({
-    next_action:'',
-    completed_tasks:JSON.stringify(updated)
-  }).eq('id',id);
+  const {error}=await sb.from('cases').update({next_action:'',completed_tasks:JSON.stringify(updated)}).eq('id',id);
   if(error) toast('⚠ Could not mark done: '+error.message);
 }
-
 async function deleteCompleted(id,idx){
   const c=cases.find(x=>x.id===id);
   if(!c) return;
   let existing=[];
   try{ existing=JSON.parse(c.completed_tasks||'[]'); }catch(e){}
   existing.splice(idx,1);
-  const {error}=await sb.from('cases').update({
-    completed_tasks:JSON.stringify(existing)
-  }).eq('id',id);
-  if(error) toast('⚠ Could not delete task: '+error.message);
+  const {error}=await sb.from('cases').update({completed_tasks:JSON.stringify(existing)}).eq('id',id);
+  if(error) toast('⚠ Could not delete task');
 }
-
 function toggleCompleted(id){ openCompleted[id]=!openCompleted[id]; render(); }
 
+// ── Non-case tasks ────────────────────────────────────────────
+async function loadTasks(){
+  const {data,error}=await sb.from('tasks').select('*').order('created_at');
+  if(error){ toast('⚠ Could not load tasks: '+error.message); return; }
+  tasks=data||[];
+}
+async function addTask(){
+  const inp=document.getElementById('new-task');
+  const text=(inp.value||'').trim();
+  if(!text){ inp.focus(); return; }
+  const {error}=await sb.from('tasks').insert({task:text,done:false});
+  if(error){ toast('⚠ Could not add task: '+error.message); return; }
+  inp.value='';
+  inp.focus();
+}
+async function toggleTask(id,done){
+  const {error}=await sb.from('tasks').update({done}).eq('id',id);
+  if(error) toast('⚠ Save failed: '+error.message);
+}
+async function deleteTask(id){
+  if(!confirm('Remove this task?')) return;
+  const {error}=await sb.from('tasks').delete().eq('id',id);
+  if(error) toast('⚠ Could not delete task');
+}
+
+// ── Add case ──────────────────────────────────────────────────
 function extractLast(name){
   let s=name.replace(/^(HARVARD\s+MORGUE-?\s*|Estate\s+of\s+)/i,'');
   const m=s.search(/,|\(|\bv\.\b|\bvs?\.?\b|\||\bDOL\b|\bMVA\b|\bUM\b|\d/i);
@@ -245,24 +280,19 @@ function extractLast(name){
   if(suf.has(last.toLowerCase())&&toks.length>1) last=toks[toks.length-2].replace(/[.,]+$/,'');
   return last;
 }
-
 async function doAdd(){
   const name=document.getElementById('new-name').value.trim();
   const cat=document.getElementById('new-cat').value;
   if(!name){ document.getElementById('new-name').focus(); return; }
   const btn=document.getElementById('add-btn');
   btn.disabled=true; btn.textContent='Adding…';
-  const last_name=extractLast(name);
-  const {error}=await sb.from('cases').insert({
-    name,last_name,category:cat,done:false,next_action:'',completed_tasks:'[]'
-  });
+  const {error}=await sb.from('cases').insert({name,last_name:extractLast(name),category:cat,done:false,next_action:'',completed_tasks:'[]'});
   btn.disabled=false; btn.textContent='Add Case';
   if(error){ toast('⚠ Could not add case: '+error.message); return; }
   document.getElementById('new-name').value='';
   document.getElementById('new-cat').value='Pre-Suit';
   toggleAdd();
 }
-
 function toggleAdd(){
   const p=document.getElementById('add-panel');
   const btn=document.getElementById('add-toggle');
@@ -281,15 +311,70 @@ function toast(msg){
   toast._t=setTimeout(()=>t.style.display='none',3800);
 }
 
+// ── Render ────────────────────────────────────────────────────
 function render(){
   const counts=Object.fromEntries(ALL_CATS.map(cat=>[cat,cases.filter(c=>c.category===cat).length]));
   document.getElementById('app-sub').innerHTML=
     CATS.map(cat=>`${cat}: <b>${counts[cat]}</b>`).join('  ·  ')+
     (counts.Closed?`  ·  ${counts.Closed} closed`:'')+
-    `  ·  <b>${cases.length}</b> total`;
+    `  ·  <b>${cases.length}</b> cases`;
 
+  // ── Non-case tasks section ──────────────────────────────────
+  const active=tasks.filter(t=>!t.done);
+  const done=tasks.filter(t=>t.done);
+  const tcoll=collapsed['__tasks'];
+  let html=`<div class="sect">
+<div class="sect-hd" style="background:${TASK_CFG.h}" onclick="togSec('__tasks')">
+  <span class="sect-title">Non-Case To Do</span>
+  <div style="display:flex;gap:10px;align-items:center;font-size:12px">
+    ${active.length?`<span class="badge">${active.length} pending</span>`:''}
+    ${done.length?`<span class="badge" style="opacity:.65">${done.length} done</span>`:''}
+    <span>${tcoll?'▶':'▼'}</span>
+  </div>
+</div>`;
+
+  if(!tcoll){
+    // Add task input
+    html+=`<div class="task-add-row">
+  <input id="new-task" type="text" placeholder="Add a task…">
+  <button class="task-add-btn" onclick="addTask()">+ Add</button>
+</div>`;
+
+    if(!active.length&&!done.length){
+      html+=`<div class="empty">No tasks yet — type one above and press Add</div>`;
+    }
+
+    // Active tasks
+    active.forEach((t,i)=>{
+      const bg=i%2===0?TASK_CFG.b2:TASK_CFG.b1;
+      html+=`<div class="task-row" style="background:${bg}">
+  <div style="text-align:center"><input type="checkbox" onchange="toggleTask('${t.id}',this.checked)" style="width:14px;height:14px;cursor:pointer;accent-color:${TASK_CFG.h}"></div>
+  <div style="font-size:12px;line-height:1.4;word-break:break-word">${esc(t.task)}</div>
+  <button class="task-del" onclick="deleteTask('${t.id}')" title="Remove task">✕</button>
+</div>`;
+    });
+
+    // Completed tasks toggle + list
+    if(done.length){
+      html+=`<button class="done-tasks-toggle" onclick="showDoneTasks=!showDoneTasks;render()">
+  ${showDoneTasks?'▲ Hide':'▼ Show'} ${done.length} completed task${done.length>1?'s':''}
+</button>`;
+      if(showDoneTasks){
+        done.forEach((t,i)=>{
+          html+=`<div class="task-row" style="background:#f8f8f8">
+  <div style="text-align:center"><input type="checkbox" checked onchange="toggleTask('${t.id}',this.checked)" style="width:14px;height:14px;cursor:pointer;accent-color:${TASK_CFG.h}"></div>
+  <div style="font-size:12px;color:#aaa;text-decoration:line-through;line-height:1.4;word-break:break-word">${esc(t.task)}</div>
+  <button class="task-del" onclick="deleteTask('${t.id}')" title="Remove task">✕</button>
+</div>`;
+        });
+      }
+    }
+  }
+  html+=`</div>`;
+
+  // ── Case sections ────────────────────────────────────────────
   const sects=[...CATS,...(counts.Closed>0?['Closed']:[])];
-  document.getElementById('case-list').innerHTML=sects.map(cat=>{
+  sects.forEach(cat=>{
     const cfg=CFG[cat];
     const coll=collapsed[cat];
     const shown=cases
@@ -297,7 +382,7 @@ function render(){
       .sort((a,b)=>(a.last_name||'').localeCompare(b.last_name||''));
     const tot=counts[cat];
 
-    let h=`<div class="sect">
+    html+=`<div class="sect">
 <div class="sect-hd" style="background:${cfg.h}" onclick="togSec('${cat}')">
   <span class="sect-title">${cat}</span>
   <div style="display:flex;gap:10px;align-items:center;font-size:12px">
@@ -307,67 +392,68 @@ function render(){
 </div>`;
 
     if(!coll){
-      h+=`<div class="tbl-wrap">
+      html+=`<div class="tbl-wrap">
 <div class="row hdr-row" style="background:${cfg.b1}">
   <div class="c-name">Case name</div>
-  <div class="c-na">Next action</div>
+  <div>Next action</div>
   <div style="text-align:center;font-size:10px">✓</div>
-  <div class="c-cat">Category</div>
+  <div>Category</div>
 </div>`;
-
       if(!shown.length){
-        h+=`<div class="empty">${searchQ?'No matching cases in this category':'No cases in this category'}</div>`;
+        html+=`<div class="empty">${searchQ?'No matching cases in this category':'No cases in this category'}</div>`;
       } else {
         shown.forEach((c,i)=>{
           const bg=i%2===0?cfg.b2:cfg.b1;
           const naVal=localNa[c.id]!==undefined?localNa[c.id]:(c.next_action||'');
           let completedTasks=[];
           try{ completedTasks=JSON.parse(c.completed_tasks||'[]'); }catch(e){}
-          const hasCompleted=completedTasks.length>0;
-          const isOpen=openCompleted[c.id];
+          const hasCT=completedTasks.length>0;
+          const isCTOpen=openCompleted[c.id];
 
-          // Main row
-          h+=`<div class="row" style="background:${bg}">
+          html+=`<div class="row" style="background:${bg}">
   <div class="c-name">${esc(c.name)}</div>
-  <div class="c-na"><input class="na-in" type="text" value="${esc(naVal)}" oninput="naInput('${c.id}',this.value)" onblur="onInputBlur()" placeholder="Next action…"></div>
-  <div style="text-align:center">
-    <button class="done-btn" onclick="markDone('${c.id}')" title="Mark task as done" ${!naVal.trim()?'disabled':''}>✓</button>
-  </div>
-  <div class="c-cat"><select class="cat-sel" onchange="moveCase('${c.id}',this.value)">
+  <div><input class="na-in" type="text" value="${esc(naVal)}" oninput="naInput('${c.id}',this.value)" onblur="onInputBlur()" placeholder="Next action…"></div>
+  <div style="text-align:center"><button class="done-btn" onclick="markDone('${c.id}')" title="Mark task as done" ${!naVal.trim()?'disabled':''}>✓</button></div>
+  <div><select class="cat-sel" onchange="moveCase('${c.id}',this.value)">
     ${ALL_CATS.map(o=>`<option value="${o}"${o===c.category?' selected':''}>${o}</option>`).join('')}
   </select></div>
 </div>`;
 
-          // Completed tasks bar
-          if(hasCompleted){
-            h+=`<div class="ct-bar" style="background:${bg}">
+          if(hasCT){
+            html+=`<div class="ct-bar" style="background:${bg}">
   <button class="ct-toggle" onclick="toggleCompleted('${c.id}')">
-    ✓ ${completedTasks.length} completed task${completedTasks.length>1?'s':''} ${isOpen?'▲':'▼'}
+    ✓ ${completedTasks.length} completed task${completedTasks.length>1?'s':''} ${isCTOpen?'▲':'▼'}
   </button>`;
-            if(isOpen){
-              h+=`<div class="ct-list">`;
+            if(isCTOpen){
+              html+=`<div class="ct-list">`;
               completedTasks.forEach((t,idx)=>{
                 const txt=typeof t==='object'?t.task:t;
                 const dt=typeof t==='object'&&t.completed_at
                   ?new Date(t.completed_at).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}):'';
-                h+=`<div class="ct-item">
+                html+=`<div class="ct-item">
   <span>✓ ${esc(txt)}${dt?` <em>— ${dt}</em>`:''}</span>
   <button class="ct-del" onclick="deleteCompleted('${c.id}',${idx})" title="Remove from log">✕</button>
 </div>`;
               });
-              h+=`</div>`;
+              html+=`</div>`;
             }
-            h+=`</div>`;
+            html+=`</div>`;
           }
         });
       }
-      h+=`</div>`;
+      html+=`</div>`;
     }
-    h+=`</div>`;
-    return h;
-  }).join('');
+    html+=`</div>`;
+  });
+
+  document.getElementById('case-list').innerHTML=html;
+
+  // Re-attach new-task enter key
+  const nt=document.getElementById('new-task');
+  if(nt) nt.addEventListener('keydown',e=>{ if(e.key==='Enter') addTask(); });
 }
 
+// ── Init ──────────────────────────────────────────────────────
 window.addEventListener('DOMContentLoaded',()=>{
   if(sessionStorage.getItem('cm_ok')==='1'){
     document.getElementById('pw').style.display='none';
