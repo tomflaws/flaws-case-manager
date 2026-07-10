@@ -169,7 +169,8 @@ const CFG = {
 const PA_CFG   = { h:'#7B4F00', b1:'#FFF3DC', b2:'#FFFBF0' };
 const TASK_CFG = { h:'#4A235A', b1:'#EDE0F8', b2:'#F5EFFC' };
 
-let sb, cases=[], tasks=[], collapsed={}, searchQ='', localNa={}, naTimers={}, rtPending=false, openCompleted={}, showDoneTasks=false;
+let sb, cases=[], tasks=[], collapsed={}, searchQ='', localNa={}, naTimers={}, rtPending=false, openCompleted={}, showDoneTasks=false, ownWrite=0;
+function markWrite(){ ownWrite++; setTimeout(()=>{ ownWrite=Math.max(0,ownWrite-1); },3000); }
 
 // ── Auth ─────────────────────────────────────────────────────
 function checkPw(){
@@ -196,6 +197,7 @@ async function startApp(){
 }
 
 function handleRT(){
+  if(ownWrite>0){ ownWrite--; loadCases(); return; }
   const a=document.activeElement;
   if(a&&(a.classList.contains('na-in')||a.id==='new-name')){
     rtPending=true;
@@ -219,7 +221,7 @@ async function loadCases(){
 }
 
 async function moveCase(id,category){
-  const {error}=await sb.from('cases').update({category}).eq('id',id);
+  markWrite(); const {error}=await sb.from('cases').update({category}).eq('id',id);
   if(error) toast('⚠ Save failed: '+error.message);
 }
 
@@ -227,7 +229,7 @@ function naInput(id,val){
   localNa[id]=val;
   clearTimeout(naTimers[id]);
   naTimers[id]=setTimeout(async()=>{
-    const {error}=await sb.from('cases').update({next_action:val}).eq('id',id);
+    markWrite(); const {error}=await sb.from('cases').update({next_action:val}).eq('id',id);
     if(!error) delete localNa[id];
   },650);
 }
@@ -243,7 +245,7 @@ async function commitAction(id){
   let pa=[];
   try{ pa=JSON.parse(c.pending_actions||'[]'); }catch(e){}
   pa.push({id:crypto.randomUUID(),action,added_at:new Date().toISOString()});
-  const {error}=await sb.from('cases').update({
+  markWrite(); const {error}=await sb.from('cases').update({
     next_action:'',
     pending_actions:JSON.stringify(pa)
   }).eq('id',id);
@@ -261,7 +263,7 @@ async function completePendingAction(caseId,actionId){
   if(!item) return;
   pa=pa.filter(a=>a.id!==actionId);
   ct.push({task:item.action,completed_at:new Date().toISOString()});
-  const {error}=await sb.from('cases').update({
+  markWrite(); const {error}=await sb.from('cases').update({
     pending_actions:JSON.stringify(pa),
     completed_tasks:JSON.stringify(ct)
   }).eq('id',caseId);
@@ -275,7 +277,7 @@ async function deletePendingAction(caseId,actionId){
   let pa=[];
   try{ pa=JSON.parse(c.pending_actions||'[]'); }catch(e){}
   pa=pa.filter(a=>a.id!==actionId);
-  const {error}=await sb.from('cases').update({pending_actions:JSON.stringify(pa)}).eq('id',caseId);
+  markWrite(); const {error}=await sb.from('cases').update({pending_actions:JSON.stringify(pa)}).eq('id',caseId);
   if(error) toast('⚠ Could not remove action');
 }
 
@@ -286,7 +288,7 @@ async function deleteCompleted(caseId,taskIdx){
   let ct=[];
   try{ ct=JSON.parse(c.completed_tasks||'[]'); }catch(e){}
   ct.splice(taskIdx,1);
-  const {error}=await sb.from('cases').update({completed_tasks:JSON.stringify(ct)}).eq('id',caseId);
+  markWrite(); const {error}=await sb.from('cases').update({completed_tasks:JSON.stringify(ct)}).eq('id',caseId);
   if(error) toast('⚠ Could not remove');
 }
 
@@ -302,16 +304,16 @@ async function addTask(){
   const inp=document.getElementById('new-task');
   const text=(inp.value||'').trim();
   if(!text){ inp.focus(); return; }
-  const {error}=await sb.from('tasks').insert({task:text,done:false});
+  markWrite(); const {error}=await sb.from('tasks').insert({task:text,done:false});
   if(error){ toast('⚠ Could not add task: '+error.message); return; }
   inp.value=''; inp.focus();
 }
 async function toggleTask(id,done){
-  await sb.from('tasks').update({done}).eq('id',id);
+  markWrite(); await sb.from('tasks').update({done}).eq('id',id);
 }
 async function deleteTask(id){
   if(!confirm('Remove this task?')) return;
-  await sb.from('tasks').delete().eq('id',id);
+  markWrite(); await sb.from('tasks').delete().eq('id',id);
 }
 
 // ── Add case ──────────────────────────────────────────────────
@@ -332,7 +334,7 @@ async function doAdd(){
   if(!name){ document.getElementById('new-name').focus(); return; }
   const btn=document.getElementById('add-btn');
   btn.disabled=true; btn.textContent='Adding…';
-  const {error}=await sb.from('cases').insert({
+  markWrite(); const {error}=await sb.from('cases').insert({
     name,last_name:extractLast(name),category:cat,
     done:false,next_action:'',completed_tasks:'[]',pending_actions:'[]'
   });
