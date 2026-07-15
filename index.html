@@ -51,7 +51,7 @@ body{font-family:'Segoe UI',Calibri,Arial,sans-serif;background:#EEF2F7;color:#2
 .tbl-wrap{overflow-x:auto}
 
 /* Case rows: name | next-action | queue-btn | category */
-.row{display:grid;grid-template-columns:minmax(190px,1.5fr) minmax(130px,1fr) 32px 112px;gap:8px;padding:5px 12px;align-items:center;border-bottom:.5px solid rgba(0,0,0,.07);min-width:500px}
+.row{display:grid;grid-template-columns:minmax(190px,1.5fr) minmax(130px,1fr) 78px 112px;gap:8px;padding:5px 12px;align-items:center;border-bottom:.5px solid rgba(0,0,0,.07);min-width:500px}
 .hdr-row{padding:4px 12px;border-bottom:1px solid rgba(0,0,0,.12)!important}
 .hdr-row div{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.3px;color:#555}
 .c-name{font-size:12px;line-height:1.4;word-break:break-word;overflow-wrap:anywhere}
@@ -59,13 +59,25 @@ body{font-family:'Segoe UI',Calibri,Arial,sans-serif;background:#EEF2F7;color:#2
 .na-in:focus{outline:2px solid rgba(31,56,100,.35);background:#fff}
 .cat-sel{width:100%;padding:4px 6px;border:1px solid #ddd;border-radius:3px;font-size:12px;cursor:pointer;font-family:inherit}
 
-/* Queue button (→) on case rows */
-.queue-btn{width:28px;height:28px;border-radius:4px;border:1.5px solid #ccc;background:transparent;color:#999;font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;font-family:inherit;line-height:1}
-.queue-btn:hover:not(:disabled){border-color:#7B4F00;color:#7B4F00;background:#FFF3DC}
-.queue-btn:disabled{opacity:.25;cursor:default}
+/* Queue buttons on case rows */
+.queue-wrap{display:flex;flex-direction:column;gap:3px}
+.qa-btn,.qp-btn{width:100%;padding:2px 5px;border-radius:3px;font-size:10px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .15s;line-height:1.4;white-space:nowrap}
+.qa-btn{border:1.5px solid #1F3864;color:#1F3864;background:transparent}
+.qa-btn:hover:not(:disabled){background:#1F3864;color:#fff}
+.qp-btn{border:1.5px solid #1C4B2D;color:#1C4B2D;background:transparent}
+.qp-btn:hover:not(:disabled){background:#1C4B2D;color:#fff}
+.qa-btn:disabled,.qp-btn:disabled{opacity:.22;cursor:default}
+/* Type badges */
+.type-badge{display:inline-block;padding:1px 7px;border-radius:3px;font-size:10px;font-weight:600;color:#fff;white-space:nowrap}
+.tb-atty{background:#1F3864}
+.tb-para{background:#1C4B2D}
+/* PA filter bar */
+.pa-filter{padding:6px 12px;background:#fff;border-bottom:.5px solid rgba(0,0,0,.1);min-width:500px;display:flex;gap:6px;align-items:center}
+.pf-btn{padding:3px 10px;border-radius:10px;border:1.5px solid #ccc;background:transparent;color:#666;font-size:11px;cursor:pointer;font-family:inherit}
+.pf-btn.active{border-color:#7B4F00;background:#7B4F00;color:#fff}
 
 /* Pending actions section */
-.pa-row{display:grid;grid-template-columns:minmax(160px,.9fr) minmax(160px,1.4fr) 64px;gap:10px;padding:7px 12px;align-items:center;border-bottom:.5px solid rgba(0,0,0,.07);min-width:500px}
+.pa-row{display:grid;grid-template-columns:minmax(140px,.8fr) minmax(140px,1.3fr) 72px 64px;gap:10px;padding:7px 12px;align-items:center;border-bottom:.5px solid rgba(0,0,0,.07);min-width:500px}
 .pa-case{font-size:11px;color:#666;line-height:1.3;word-break:break-word;font-style:italic}
 .pa-action{font-size:12px;line-height:1.4;word-break:break-word;font-weight:500}
 .pa-btns{display:flex;gap:5px;align-items:center;justify-content:flex-end}
@@ -169,7 +181,7 @@ const CFG = {
 const PA_CFG   = { h:'#7B4F00', b1:'#FFF3DC', b2:'#FFFBF0' };
 const TASK_CFG = { h:'#4A235A', b1:'#EDE0F8', b2:'#F5EFFC' };
 
-let sb, cases=[], tasks=[], collapsed={}, searchQ='', localNa={}, naTimers={}, rtPending=false, openCompleted={}, showDoneTasks=false, ownWrite=0;
+let sb, cases=[], tasks=[], collapsed={}, searchQ='', localNa={}, naTimers={}, rtPending=false, openCompleted={}, showDoneTasks=false, ownWrite=0, paFilter='All';
 function markWrite(){ ownWrite++; setTimeout(()=>{ ownWrite=Math.max(0,ownWrite-1); },3000); }
 
 // ── Auth ─────────────────────────────────────────────────────
@@ -235,7 +247,8 @@ function naInput(id,val){
 }
 
 // Commit next action → Pending Actions queue
-async function commitAction(id){
+async function commitAction(id,type){
+  type=type||'Attorney';
   const c=cases.find(x=>x.id===id);
   if(!c) return;
   const action=(localNa[id]!==undefined?localNa[id]:(c.next_action||'')).trim();
@@ -244,7 +257,7 @@ async function commitAction(id){
   delete localNa[id];
   let pa=[];
   try{ pa=JSON.parse(c.pending_actions||'[]'); }catch(e){}
-  pa.push({id:crypto.randomUUID(),action,added_at:new Date().toISOString()});
+  pa.push({id:crypto.randomUUID(),action,type,added_at:new Date().toISOString()});
   markWrite(); const {error}=await sb.from('cases').update({
     next_action:'',
     pending_actions:JSON.stringify(pa)
@@ -374,7 +387,8 @@ function render(){
     pa.forEach(a=>{
       allPending.push({
         caseId:c.id, caseName:c.name,
-        actionId:a.id, action:a.action, added_at:a.added_at||''
+        actionId:a.id, action:a.action,
+        type:a.type||'Attorney', added_at:a.added_at||''
       });
     });
   });
@@ -390,11 +404,16 @@ function render(){
 
   // ── 1. Pending Actions section ────────────────────────────────
   const pac=collapsed['__pending'];
+  const attyCount=allPending.filter(p=>p.type==='Attorney').length;
+  const paraCount=allPending.filter(p=>p.type==='Paralegal').length;
+  const visiblePending=paFilter==='All'?allPending:allPending.filter(p=>p.type===paFilter);
   html+=`<div class="sect">
 <div class="sect-hd" style="background:${PA_CFG.h}" onclick="togSec('__pending')">
   <span class="sect-title">Pending Actions</span>
   <div style="display:flex;gap:10px;align-items:center;font-size:12px">
-    <span class="badge">${allPending.length} action${allPending.length!==1?'s':''}</span>
+    ${attyCount?`<span class="badge" style="background:rgba(31,56,100,.45)">${attyCount} atty</span>`:''}
+    ${paraCount?`<span class="badge" style="background:rgba(28,75,45,.45)">${paraCount} para</span>`:''}
+    <span class="badge">${allPending.length} total</span>
     <span>${pac?'▶':'▼'}</span>
   </div>
 </div>`;
@@ -402,15 +421,22 @@ function render(){
     if(!allPending.length){
       html+=`<div class="empty" style="background:#FFFBF0">No pending actions yet — type a next action on any case below and press Enter to queue it here</div>`;
     } else {
-      html+=`<div class="tbl-wrap">
+      html+=`<div class="pa-filter">
+  <button class="pf-btn ${paFilter==='All'?'active':''}" onclick="paFilter='All';render()">All (${allPending.length})</button>
+  <button class="pf-btn ${paFilter==='Attorney'?'active':''}" onclick="paFilter='Attorney';render()">Attorney (${attyCount})</button>
+  <button class="pf-btn ${paFilter==='Paralegal'?'active':''}" onclick="paFilter='Paralegal';render()">Paralegal (${paraCount})</button>
+</div>
+<div class="tbl-wrap">
 <div class="pa-row hdr-row" style="background:${PA_CFG.b1}">
-  <div>Case</div><div>Action</div><div></div>
+  <div>Case</div><div>Action</div><div>Assigned to</div><div></div>
 </div>`;
-      allPending.forEach((pa,i)=>{
+      visiblePending.forEach((pa,i)=>{
         const bg=i%2===0?PA_CFG.b2:PA_CFG.b1;
+        const tbCls=pa.type==='Paralegal'?'tb-para':'tb-atty';
         html+=`<div class="pa-row" style="background:${bg}">
   <div class="pa-case">${esc(pa.caseName)}</div>
   <div class="pa-action">${esc(pa.action)}</div>
+  <div><span class="type-badge ${tbCls}">${esc(pa.type)}</span></div>
   <div class="pa-btns">
     <button class="pa-done" onclick="completePendingAction('${pa.caseId}','${pa.actionId}')" title="Mark done">✓</button>
     <button class="pa-del" onclick="deletePendingAction('${pa.caseId}','${pa.actionId}')" title="Remove">✕</button>
@@ -446,7 +472,7 @@ function render(){
 <div class="row hdr-row" style="background:${cfg.b1}">
   <div class="c-name">Case name</div>
   <div>Next action <span style="font-weight:400;opacity:.7">(Enter to queue)</span></div>
-  <div style="text-align:center">→</div>
+  <div style="font-size:9px">Queue as</div>
   <div>Category</div>
 </div>`;
       if(!shown.length){
@@ -466,10 +492,11 @@ function render(){
   <div><input class="na-in" type="text" value="${esc(naVal)}"
     oninput="naInput('${c.id}',this.value)"
     onblur="onInputBlur()"
-    onkeydown="if(event.key==='Enter'){event.preventDefault();commitAction('${c.id}')}"
-    placeholder="Next action… press Enter to queue"></div>
-  <div style="text-align:center">
-    <button class="queue-btn" onclick="commitAction('${c.id}')" title="Queue this action" ${!naVal.trim()?'disabled':''}>→</button>
+    onkeydown="if(event.key==='Enter'){event.preventDefault();commitAction('${c.id}','Attorney')}"
+    placeholder="Next action… Enter = Attorney"></div>
+  <div class="queue-wrap">
+    <button class="qa-btn" onclick="commitAction('${c.id}','Attorney')" title="Queue as Attorney task" ${!naVal.trim()?'disabled':''}>→ Atty</button>
+    <button class="qp-btn" onclick="commitAction('${c.id}','Paralegal')" title="Queue as Paralegal task" ${!naVal.trim()?'disabled':''}>→ Para</button>
   </div>
   <div><select class="cat-sel" onchange="moveCase('${c.id}',this.value)">
     ${ALL_CATS.map(o=>`<option value="${o}"${o===c.category?' selected':''}>${o}</option>`).join('')}
