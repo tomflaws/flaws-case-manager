@@ -86,10 +86,7 @@ body{font-family:'Segoe UI',Calibri,Arial,sans-serif;background:#EEF2F7;color:#2
 .pa-del{background:none;border:none;cursor:pointer;color:#ccc;font-size:12px;padding:3px 5px;border-radius:2px;font-family:inherit}
 .pa-del:hover{color:#c00;background:rgba(200,0,0,.08)}
 
-/* Completed tasks bar (on case rows) */
-.ct-bar{min-width:500px;padding:4px 12px 4px 14px;border-bottom:.5px solid rgba(0,0,0,.07)}
-.ct-toggle{background:none;border:none;cursor:pointer;font-size:11px;color:#555;padding:2px 6px;border-radius:3px;font-family:inherit}
-.ct-toggle:hover{background:rgba(0,0,0,.06)}
+/* Completed tasks (global section) */
 .ct-list{margin-top:4px;padding:4px 0 4px 8px;display:flex;flex-direction:column;gap:3px}
 .ct-item{display:flex;align-items:center;gap:8px;font-size:11px;color:#555;padding:2px 4px}
 .ct-item span{flex:1;word-break:break-word}
@@ -180,8 +177,9 @@ const CFG = {
 };
 const PA_CFG   = { h:'#7B4F00', b1:'#FFF3DC', b2:'#FFFBF0' };
 const TASK_CFG = { h:'#4A235A', b1:'#EDE0F8', b2:'#F5EFFC' };
+const COMP_CFG = { h:'#3F3F3F', b1:'#EFEFEF', b2:'#F8F8F8' };
 
-let sb, cases=[], tasks=[], collapsed={}, searchQ='', localNa={}, naTimers={}, rtPending=false, openCompleted={}, showDoneTasks=false, ownWrite=0, paFilter='All';
+let sb, cases=[], tasks=[], collapsed={'__completed':true}, searchQ='', localNa={}, naTimers={}, rtPending=false, showDoneTasks=false, ownWrite=0, paFilter='All';
 function markWrite(){ ownWrite++; setTimeout(()=>{ ownWrite=Math.max(0,ownWrite-1); },3000); }
 
 // ── Auth ─────────────────────────────────────────────────────
@@ -305,7 +303,6 @@ async function deleteCompleted(caseId,taskIdx){
   if(error) toast('⚠ Could not remove');
 }
 
-function toggleCompleted(id){ openCompleted[id]=!openCompleted[id]; render(); }
 
 // ── Non-case tasks ────────────────────────────────────────────
 async function loadTasks(){
@@ -483,9 +480,7 @@ function render(){
           const naVal=localNa[c.id]!==undefined?localNa[c.id]:(c.next_action||'');
           let ct=[]; try{ ct=JSON.parse(c.completed_tasks||'[]'); }catch(e){}
           let pa=[]; try{ pa=JSON.parse(c.pending_actions||'[]'); }catch(e){}
-          const hasCT=ct.length>0;
           const hasPending=pa.length>0;
-          const isCTOpen=openCompleted[c.id];
 
           html+=`<div class="row" style="background:${bg}">
   <div class="c-name">${esc(c.name)}${hasPending?` <span style="font-size:10px;color:#7B4F00;font-weight:600">${pa.length} queued</span>`:''}</div>
@@ -503,26 +498,6 @@ function render(){
   </select></div>
 </div>`;
 
-          if(hasCT){
-            html+=`<div class="ct-bar" style="background:${bg}">
-  <button class="ct-toggle" onclick="toggleCompleted('${c.id}')">
-    ✓ ${ct.length} completed task${ct.length>1?'s':''} ${isCTOpen?'▲':'▼'}
-  </button>`;
-            if(isCTOpen){
-              html+=`<div class="ct-list">`;
-              ct.forEach((t,idx)=>{
-                const txt=typeof t==='object'?t.task:t;
-                const dt=typeof t==='object'&&t.completed_at
-                  ?new Date(t.completed_at).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}):'';
-                html+=`<div class="ct-item">
-  <span>✓ ${esc(txt)}${dt?` <em>— ${dt}</em>`:''}</span>
-  <button class="ct-del" onclick="deleteCompleted('${c.id}',${idx})" title="Remove from log">✕</button>
-</div>`;
-              });
-              html+=`</div>`;
-            }
-            html+=`</div>`;
-          }
         });
       }
       html+=`</div>`;
@@ -530,7 +505,54 @@ function render(){
     html+=`</div>`;
   });
 
-  // ── 3. Non-Case To Do (bottom) ────────────────────────────────
+
+  // ── 3. Completed Tasks section (collapsed by default) ────────
+  const allCompleted=[];
+  cases.forEach(c=>{
+    let ct=[]; try{ ct=JSON.parse(c.completed_tasks||'[]'); }catch(e){}
+    ct.forEach((t,idx)=>{
+      allCompleted.push({
+        caseId:c.id, caseName:c.name,
+        task:typeof t==='object'?t.task:t,
+        completed_at:typeof t==='object'&&t.completed_at?t.completed_at:'',
+        idx
+      });
+    });
+  });
+  allCompleted.sort((a,b)=>b.completed_at.localeCompare(a.completed_at));
+  const ccoll=collapsed['__completed'];
+  html+=`<div class="sect">
+<div class="sect-hd" style="background:${COMP_CFG.h}" onclick="togSec('__completed')">
+  <span class="sect-title">Completed Tasks</span>
+  <div style="display:flex;gap:10px;align-items:center;font-size:12px">
+    <span class="badge">${allCompleted.length} task${allCompleted.length!==1?'s':''}</span>
+    <span>${ccoll?'▶':'▼'}</span>
+  </div>
+</div>`;
+  if(!ccoll){
+    if(!allCompleted.length){
+      html+=`<div class="empty" style="background:${COMP_CFG.b2}">No completed tasks yet</div>`;
+    } else {
+      html+=`<div class="tbl-wrap">
+<div style="display:grid;grid-template-columns:minmax(140px,.8fr) minmax(150px,1.3fr) 95px 24px;gap:8px;padding:4px 12px;background:${COMP_CFG.b1};border-bottom:1px solid rgba(0,0,0,.12);min-width:500px;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.3px;color:#555">
+  <div>Case</div><div>Task</div><div>Completed</div><div></div>
+</div>`;
+      allCompleted.forEach((ct,i)=>{
+        const bg=i%2===0?COMP_CFG.b2:COMP_CFG.b1;
+        const dt=ct.completed_at?new Date(ct.completed_at).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}):'';
+        html+=`<div style="display:grid;grid-template-columns:minmax(140px,.8fr) minmax(150px,1.3fr) 95px 24px;gap:8px;padding:6px 12px;background:${bg};border-bottom:.5px solid rgba(0,0,0,.07);align-items:center;min-width:500px">
+  <div style="font-size:11px;color:#666;font-style:italic;word-break:break-word;line-height:1.3">${esc(ct.caseName)}</div>
+  <div style="font-size:12px;word-break:break-word;line-height:1.4">✓ ${esc(ct.task)}</div>
+  <div style="font-size:11px;color:#888">${dt}</div>
+  <button class="ct-del" onclick="deleteCompleted('${ct.caseId}',${ct.idx})" title="Remove from log">✕</button>
+</div>`;
+      });
+      html+=`</div>`;
+    }
+  }
+  html+=`</div>`;
+
+  // ── 4. Non-Case To Do (bottom) ────────────────────────────────
   const active=tasks.filter(t=>!t.done);
   const done=tasks.filter(t=>t.done);
   const tcoll=collapsed['__tasks'];
