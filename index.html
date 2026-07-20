@@ -389,7 +389,11 @@ function render(){
       });
     });
   });
-  allPending.sort((a,b)=>a.added_at.localeCompare(b.added_at));
+  allPending.sort((a,b)=>{
+    const ca=cases.find(x=>x.id===a.caseId);
+    const cb=cases.find(x=>x.id===b.caseId);
+    return (ca?.last_name||a.caseName).toLowerCase().localeCompare((cb?.last_name||b.caseName).toLowerCase());
+  });
 
   document.getElementById('app-sub').innerHTML=
     CATS.map(cat=>`${cat}: <b>${counts[cat]}</b>`).join('  ·  ')+
