@@ -136,10 +136,12 @@ body{font-family:'Segoe UI',Calibri,Arial,sans-serif;background:#EEF2F7;color:#2
     <div id="top-l">
       <div id="app-title">Flaws Case Manager</div>
       <div id="app-sub">Loading…</div>
+      <div id="backup-status" style="font-size:10px;opacity:.65;margin-top:1px"></div>
     </div>
     <div id="top-r">
       <input id="srch" type="text" placeholder="Search cases…" oninput="onSearch(this.value)">
       <button class="tbtn" id="add-toggle" onclick="toggleAdd()">+ Add Case</button>
+      <button class="tbtn" onclick="manualBackup()" id="backup-btn" title="Save a backup now">💾 Backup</button>
     </div>
   </div>
 
@@ -204,6 +206,7 @@ async function startApp(){
   sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
   document.getElementById('app').style.display='block';
   await Promise.all([loadCases(),loadTasks()]);
+  checkAutoBackup();
   sb.channel('cm_live')
     .on('postgres_changes',{event:'*',schema:'public',table:'cases'},handleRT)
     .on('postgres_changes',{event:'*',schema:'public',table:'tasks'},handleTaskRT)
@@ -387,6 +390,56 @@ function toast(msg){
   t.textContent=msg; t.style.display='block';
   clearTimeout(toast._t);
   toast._t=setTimeout(()=>t.style.display='none',3800);
+}
+
+
+// ── Backup system ─────────────────────────────────────────────
+const BACKUP_INTERVAL_MS = 6 * 60 * 60 * 1000; // 6 hours
+
+async function performBackup(eventType){
+  try{
+    const {data:cd, error:ce}=await sb.from('cases').select('*');
+    if(ce){ console.error('Backup fetch failed',ce); return false; }
+    const {data:td}=await sb.from('tasks').select('*');
+    const {error:be}=await sb.from('cases_backup').insert({
+      event_type: eventType||'auto',
+      case_count: cd.length,
+      snapshot: cd
+    });
+    if(be){ console.error('Backup insert failed',be); return false; }
+    if(td&&td.length){
+      await sb.from('tasks_backup').insert({event_type:eventType||'auto',snapshot:td});
+    }
+    const now=new Date().toISOString();
+    localStorage.setItem('cm_last_backup',now);
+    updateBackupStatus(now);
+    return true;
+  }catch(e){ console.error('Backup error',e); return false; }
+}
+
+async function manualBackup(){
+  const btn=document.getElementById('backup-btn');
+  btn.textContent='💾 Saving…'; btn.disabled=true;
+  const ok=await performBackup('manual');
+  btn.disabled=false; btn.textContent='💾 Backup';
+  if(ok) toast('✓ Backup saved — '+new Date().toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}));
+  else toast('⚠ Backup failed — check console');
+}
+
+function updateBackupStatus(isoStr){
+  const el=document.getElementById('backup-status');
+  if(!el) return;
+  if(!isoStr){ el.textContent=''; return; }
+  const d=new Date(isoStr);
+  el.textContent='Last backup: '+d.toLocaleDateString('en-US',{month:'short',day:'numeric'})+' at '+d.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
+}
+
+async function checkAutoBackup(){
+  const last=localStorage.getItem('cm_last_backup');
+  updateBackupStatus(last);
+  if(!last||Date.now()-new Date(last).getTime()>BACKUP_INTERVAL_MS){
+    await performBackup('auto');
+  }
 }
 
 // ── Render ────────────────────────────────────────────────────
