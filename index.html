@@ -442,6 +442,25 @@ async function checkAutoBackup(){
   }
 }
 
+
+// ── Display name helpers ──────────────────────────────────────
+function clientDisplay(c){
+  // Show "Last, First" as primary; extract case context suffix
+  const nm=c.last_name&&c.last_name.includes(',')?c.last_name:null;
+  if(!nm) return esc(c.name);
+  // Find where case context starts in full name
+  const full=c.name;
+  const suffixMatch=full.match(/(\s+(v\.|vs\.?|,\s*PPA|\().*)/i);
+  const suffix=suffixMatch?suffixMatch[0].trim():'';
+  return '<span style="font-weight:500">'+esc(nm)+'</span>'+(suffix?'<span style="color:#777;font-size:11px"> '+esc(suffix)+'</span>':'');
+}
+function clientDisplayPA(caseName,lastName){
+  if(!lastName||!lastName.includes(',')) return esc(caseName);
+  const suffixMatch=caseName.match(/(\s+(v\.|vs\.?|,\s*PPA|\().*)/i);
+  const suffix=suffixMatch?suffixMatch[0].trim():'';
+  return '<span style="font-weight:500">'+esc(lastName)+'</span>'+(suffix?'<span style="color:#777;font-size:11px"> '+esc(suffix)+'</span>':'');
+}
+
 // ── Render ────────────────────────────────────────────────────
 function render(){
   const counts=Object.fromEntries(ALL_CATS.map(cat=>[cat,cases.filter(c=>c.category===cat).length]));
@@ -510,7 +529,7 @@ function render(){
         const tbCls=pa.type==='Paralegal'?'tb-para':'tb-atty';
         html+=`<div class="pa-row" style="background:${starredBg};${starBorder}">
   <div style="text-align:center"><button class="star-btn ${pa.starred?'on':''}" onclick="toggleStarPending('${pa.caseId}','${pa.actionId}')" title="${pa.starred?'Unstar':'Star — moves to top'}">${pa.starred?'★':'☆'}</button></div>
-  <div class="pa-case">${esc(pa.caseName)}</div>
+  <div class="pa-case">${clientDisplayPA(pa.caseName,cases.find(x=>x.id===pa.caseId)?.last_name||"")}</div>
   <div class="pa-action">${esc(pa.action)}</div>
   <div><span class="type-badge ${tbCls}">${esc(pa.type)}</span></div>
   <div class="pa-btns">
@@ -562,7 +581,7 @@ function render(){
           const hasPending=pa.length>0;
 
           html+=`<div class="row" style="background:${bg}">
-  <div class="c-name">${esc(c.name)}${hasPending?` <span style="font-size:10px;color:#7B4F00;font-weight:600">${pa.length} queued</span>`:''}</div>
+  <div class="c-name">${clientDisplay(c)}${hasPending?` <span style="font-size:10px;color:#7B4F00;font-weight:600">${pa.length} queued</span>`:''}</div>
   <div><input class="na-in" type="text" value="${esc(naVal)}"
     oninput="naInput('${c.id}',this.value)"
     onblur="onInputBlur()"
@@ -620,7 +639,7 @@ function render(){
         const bg=i%2===0?COMP_CFG.b2:COMP_CFG.b1;
         const dt=ct.completed_at?new Date(ct.completed_at).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}):'';
         html+=`<div style="display:grid;grid-template-columns:minmax(140px,.8fr) minmax(150px,1.3fr) 95px 24px;gap:8px;padding:6px 12px;background:${bg};border-bottom:.5px solid rgba(0,0,0,.07);align-items:center;min-width:500px">
-  <div style="font-size:11px;color:#666;font-style:italic;word-break:break-word;line-height:1.3">${esc(ct.caseName)}</div>
+  <div style="font-size:11px;color:#666;word-break:break-word;line-height:1.3">${clientDisplayPA(ct.caseName,cases.find(x=>x.id===ct.caseId)?.last_name||"")}</div>
   <div style="font-size:12px;word-break:break-word;line-height:1.4">✓ ${esc(ct.task)}</div>
   <div style="font-size:11px;color:#888">${dt}</div>
   <button class="ct-del" onclick="deleteCompleted('${ct.caseId}',${ct.idx})" title="Remove from log">✕</button>
