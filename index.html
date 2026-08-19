@@ -166,6 +166,25 @@ body{font-family:'Segoe UI',Calibri,Arial,sans-serif;background:#EEF2F7;color:#2
   <div id="footer">Changes save automatically · Real-time sync enabled · Source: FLAWS Case Count 6/22/2026</div>
 </div>
 
+
+<!-- Case edit modal -->
+<div id="case-modal" onclick="handleModalOverlay(event)" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:500;align-items:center;justify-content:center">
+  <div id="modal-panel" style="background:#fff;border-radius:8px;padding:24px;width:580px;max-width:92vw;box-shadow:0 8px 40px rgba(0,0,0,.3);position:relative">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px">
+      <h2 style="font-size:15px;font-weight:600;color:#1F3864;margin:0">Edit Case</h2>
+      <button onclick="closeCaseModal()" style="background:none;border:none;cursor:pointer;font-size:22px;color:#aaa;line-height:1;padding:0 2px">&times;</button>
+    </div>
+    <label style="display:block;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.4px;color:#666;margin-bottom:5px">Case name</label>
+    <input id="modal-name" type="text" style="width:100%;padding:8px 10px;border:1.5px solid #ddd;border-radius:4px;font-size:13px;font-family:inherit;margin-bottom:16px;box-sizing:border-box">
+    <label style="display:block;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.4px;color:#666;margin-bottom:5px">Notes</label>
+    <textarea id="modal-notes" rows="7" placeholder="Add notes about this case&#8230;" style="width:100%;padding:8px 10px;border:1.5px solid #ddd;border-radius:4px;font-size:13px;font-family:inherit;resize:vertical;line-height:1.6;box-sizing:border-box"></textarea>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:18px">
+      <button onclick="closeCaseModal()" style="padding:7px 16px;border:1.5px solid #ccc;background:transparent;border-radius:4px;font-size:13px;cursor:pointer;font-family:inherit;color:#555">Cancel</button>
+      <button onclick="saveCaseModal()" id="modal-save-btn" style="padding:7px 20px;background:#1F3864;color:#fff;border:none;border-radius:4px;font-size:13px;cursor:pointer;font-family:inherit">Save</button>
+    </div>
+  </div>
+</div>
+
 <div id="toast"></div>
 
 <script>
@@ -393,6 +412,45 @@ function toast(msg){
 }
 
 
+
+// ── Case edit modal ───────────────────────────────────────────
+let modalCaseId = null;
+
+function openCaseModal(id){
+  const c=cases.find(x=>x.id===id);
+  if(!c) return;
+  modalCaseId=id;
+  document.getElementById('modal-name').value=c.name||'';
+  document.getElementById('modal-notes').value=c.notes||'';
+  const m=document.getElementById('case-modal');
+  m.style.display='flex';
+  setTimeout(()=>document.getElementById('modal-name').focus(),50);
+}
+
+function closeCaseModal(){
+  document.getElementById('case-modal').style.display='none';
+  modalCaseId=null;
+}
+
+function handleModalOverlay(e){
+  if(e.target===document.getElementById('case-modal')) closeCaseModal();
+}
+
+async function saveCaseModal(){
+  if(!modalCaseId) return;
+  const name=document.getElementById('modal-name').value.trim();
+  const notes=document.getElementById('modal-notes').value;
+  if(!name){ document.getElementById('modal-name').focus(); return; }
+  const btn=document.getElementById('modal-save-btn');
+  btn.disabled=true; btn.textContent='Saving…';
+  const last_name=extractLast(name);
+  markWrite();
+  const {error}=await sb.from('cases').update({name,last_name,notes}).eq('id',modalCaseId);
+  btn.disabled=false; btn.textContent='Save';
+  if(error){ toast('⚠ Could not save: '+error.message); return; }
+  closeCaseModal();
+}
+
 // ── Backup system ─────────────────────────────────────────────
 const BACKUP_INTERVAL_MS = 6 * 60 * 60 * 1000; // 6 hours
 
@@ -581,7 +639,7 @@ function render(){
           const hasPending=pa.length>0;
 
           html+=`<div class="row" style="background:${bg}">
-  <div class="c-name">${clientDisplay(c)}${hasPending?` <span style="font-size:10px;color:#7B4F00;font-weight:600">${pa.length} queued</span>`:''}</div>
+  <div class="c-name" onclick="openCaseModal('${c.id}')" style="cursor:pointer" title="Click to edit">${clientDisplay(c)}${c.notes?'<span title="Has notes" style="color:#4472C4;font-size:11px;margin-left:5px">✏</span>':''}${hasPending?` <span style="font-size:10px;color:#7B4F00;font-weight:600">${pa.length} queued</span>`:''}</div>
   <div><input class="na-in" type="text" value="${esc(naVal)}"
     oninput="naInput('${c.id}',this.value)"
     onblur="onInputBlur()"
@@ -711,6 +769,10 @@ window.addEventListener('DOMContentLoaded',()=>{
   }
   document.getElementById('pw-in').addEventListener('keydown',e=>{ if(e.key==='Enter') checkPw(); });
   document.getElementById('new-name').addEventListener('keydown',e=>{ if(e.key==='Enter') doAdd(); });
+  document.addEventListener('keydown',e=>{
+    if(e.key==='Escape') closeCaseModal();
+    if(e.key==='Enter'&&(e.ctrlKey||e.metaKey)&&modalCaseId) saveCaseModal();
+  });
 });
 </script>
 </body>
