@@ -233,11 +233,17 @@ async function startApp(){
 }
 
 function handleRT(){
-  if(ownWrite>0){ ownWrite--; loadCases(); return; }
   const a=document.activeElement;
-  if(a&&(a.classList.contains('na-in')||a.id==='new-name')){
+  const typing=a&&a.classList.contains('na-in');
+  if(ownWrite>0){
+    ownWrite--;
+    if(typing){ rtPending=true; return; } // don't re-render while cursor is active
+    loadCases();
+    return;
+  }
+  if(typing||a&&a.id==='new-name'){
     rtPending=true;
-    toast('Another user made a change — will refresh when you finish typing');
+    toast('Another user made a change \u2014 will refresh when you finish typing');
     return;
   }
   loadCases();
